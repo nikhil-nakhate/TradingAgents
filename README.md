@@ -127,7 +127,39 @@ cp .env.example .env
 # Edit .env with your actual API keys
 ```
 
-**Note:** We are happy to partner with Alpha Vantage to provide robust API support for TradingAgents. You can get a free AlphaVantage API [here](https://www.alphavantage.co/support/#api-key), TradingAgents-sourced requests also have increased rate limits to 60 requests per minute with no daily limits. Typically the quota is sufficient for performing complex tasks with TradingAgents thanks to Alpha Vantage’s open-source support program. If you prefer to use OpenAI for these data sources instead, you can modify the data vendor settings in `tradingagents/default_config.py`.
+**Note:** We are happy to partner with Alpha Vantage to provide robust API support for TradingAgents. You can get a free AlphaVantage API [here](https://www.alphavantage.co/support/#api-key), TradingAgents-sourced requests also have increased rate limits to 60 requests per minute with no daily limits. Typically the quota is sufficient for performing complex tasks with TradingAgents thanks to Alpha Vantage's open-source support program. If you prefer to use OpenAI for these data sources instead, you can modify the data vendor settings in `tradingagents/default_config.py`.
+
+### Using Local LLMs with llama.cpp
+
+TradingAgents supports running completely local LLMs using llama.cpp for **privacy, cost savings, and custom model support**:
+
+```bash
+# 1. Install llama-cpp-python with GPU support
+CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python[server]
+# For Apple Silicon: CMAKE_ARGS="-DGGML_METAL=on" pip install llama-cpp-python[server]
+
+# 2. Download models (e.g., DeepSeek R1 for reasoning tasks)
+python scripts/download_models.py deepseek-r1-distill-llama-8b
+
+# 3. Start llama.cpp server
+./scripts/start_llamacpp_server.sh
+
+# 4. Run TradingAgents and select "LlamaCpp (Local)" as provider
+python main.py
+```
+
+**Benefits:**
+- ✅ **Zero API costs** - completely free after model download
+- ✅ **Complete privacy** - all data stays on your machine
+- ✅ **Custom models** - use fine-tuned models trained on your trading data
+- ✅ **Offline operation** - works without internet
+
+**Recommended Models:**
+- **DeepSeek-R1-Distill-Llama-8B** (5.5GB) - Fast reasoning for quick thinking
+- **DeepSeek-R1-Distill-Llama-70B** (42GB) - Best reasoning for deep thinking
+- **Llama-3.3-70B-Instruct** (42GB) - Comprehensive general capabilities
+
+See the [llama.cpp Setup Guide](docs/LLAMACPP_SETUP.md) for detailed instructions, fine-tuning workflows, and troubleshooting.
 
 ### CLI Usage
 

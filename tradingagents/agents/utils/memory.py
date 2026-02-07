@@ -5,21 +5,38 @@ from openai import OpenAI
 
 class FinancialSituationMemory:
     def __init__(self, name, config):
+        # Determine embedding strategy
         if config["backend_url"] == "http://localhost:11434/v1":
+            # Ollama
             self.embedding = "nomic-embed-text"
+            self.client = OpenAI(base_url=config["backend_url"])
+            self.use_api_embeddings = True
+        elif config["llm_provider"].lower() == "llamacpp":
+            # llama.cpp - use local sentence-transformers
+            from chromadb.utils import embedding_functions
+            self.embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name="all-MiniLM-L6-v2"  # 384-dim, 22MB, fast
+            )
+            self.use_api_embeddings = False
         else:
+            # OpenAI, Anthropic, Google, OpenRouter
             self.embedding = "text-embedding-3-small"
-        self.client = OpenAI(base_url=config["backend_url"])
+            self.client = OpenAI(base_url=config["backend_url"])
+            self.use_api_embeddings = True
+
         self.chroma_client = chromadb.Client(Settings(allow_reset=True))
         self.situation_collection = self.chroma_client.create_collection(name=name)
 
     def get_embedding(self, text):
-        """Get OpenAI embedding for a text"""
-        
-        response = self.client.embeddings.create(
-            model=self.embedding, input=text
-        )
-        return response.data[0].embedding
+        """Get embedding for text"""
+        if self.use_api_embeddings:
+            response = self.client.embeddings.create(
+                model=self.embedding, input=text
+            )
+            return response.data[0].embedding
+        else:
+            # Use local sentence-transformers
+            return self.embedding_fn([text])[0]
 
     def add_situations(self, situations_and_advice):
         """Add financial situations and their corresponding advice. Parameter is a list of tuples (situation, rec)"""

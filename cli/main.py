@@ -429,13 +429,142 @@ def get_user_selections():
             box_content += f"\n[dim]Default: {default}[/dim]"
         return Panel(box_content, border_style="blue", padding=(1, 2))
 
-    # Step 1: Ticker symbol
+    # Step 0: Choose mode (discovery or direct ticker)
     console.print(
         create_question_box(
-            "Step 1: Ticker Symbol", "Enter the ticker symbol to analyze", "SPY"
+            "Step 0: Analysis Mode",
+            "Choose how to select tickers: 'discovery' to find tickers by description, or 'direct' to analyze a specific ticker",
+            "direct"
         )
     )
-    selected_ticker = get_ticker()
+    mode_choice = typer.prompt("Enter mode (discovery/direct)", default="direct").lower()
+    
+    selected_ticker = None
+    discovery_tickers = []
+    
+    if mode_choice == "discovery":
+        # Discovery mode: interpret intent and discover tickers
+        console.print(
+            create_question_box(
+                "Discovery Mode",
+                "Describe what kind of stocks you're looking for (e.g., 'tech stocks with AI focus', 'large cap healthcare growth stocks')"
+            )
+        )
+        user_intent = typer.prompt("Enter your trading intent")
+        
+        if not user_intent:
+            console.print("[red]No intent provided. Exiting...[/red]")
+            exit(1)
+        
+        # Import discovery functions
+        from tradingagents.discovery import interpret_user_intent, discover_tickers, create_screening_config, batch_analyze_tickers, filter_top_candidates
+        from tradingagents.discovery.lightweight_analyzer import _get_llm
+        
+        # Step: Select LLM provider for discovery
+        console.print(
+            create_question_box(
+                "LLM Provider for Discovery",
+                "Select which LLM service to use for intent interpretation and ticker discovery"
+            )
+        )
+        selected_llm_provider, backend_url = select_llm_provider()
+        
+        # Step: Select shallow thinking agent (for quick intent interpretation)
+        console.print(
+            create_question_box(
+                "Quick-Thinking LLM",
+                "Select the model for fast intent interpretation"
+            )
+        )
+        selected_shallow_thinker = select_shallow_thinking_agent(selected_llm_provider)
+        
+        # Map provider name to config format
+        provider_map = {
+            "llamacpp (local)": "llamacpp",
+            "ollama": "ollama",
+            "openai": "openai",
+            "anthropic": "anthropic",
+            "google": "google",
+            "openrouter": "openrouter",
+        }
+        config_provider = provider_map.get(selected_llm_provider.lower(), selected_llm_provider.lower())
+        
+        # Get LLM for intent interpretation
+        config = DEFAULT_CONFIG.copy()
+        config["llm_provider"] = config_provider
+        config["backend_url"] = backend_url
+        config["quick_think_llm"] = selected_shallow_thinker
+        
+        # Set llamacpp_server_url if using llamacpp provider
+        if config_provider == "llamacpp":
+            config["llamacpp_server_url"] = backend_url
+        
+        console.print("[yellow]Interpreting your intent and discovering tickers...[/yellow]")
+        
+        llm = _get_llm(selected_shallow_thinker, config)
+        
+        try:
+            # Step 1: Interpret intent
+            criteria = interpret_user_intent(user_intent, llm)
+            console.print(f"[green]✓[/green] Extracted criteria: {criteria}")
+            
+            # Step 2: Discover tickers
+            candidates = discover_tickers(criteria)
+            console.print(f"[green]✓[/green] Found {len(candidates)} candidate tickers")
+            
+            # Step 3: Lightweight screening
+            analysis_date = datetime.datetime.now().strftime("%Y-%m-%d")
+            screening_config = create_screening_config(config)
+            results = batch_analyze_tickers(
+                candidates[:10],  # Limit to top 10 for speed
+                analysis_date,
+                screening_config,
+                max_workers=3
+            )
+            
+            # Step 4: Filter top candidates
+            top_tickers = filter_top_candidates(results, min_score=60, max_candidates=5)
+            
+            if top_tickers:
+                console.print(f"\n[green]Top {len(top_tickers)} candidates:[/green]")
+                for i, ticker in enumerate(top_tickers, 1):
+                    result = next(r for r in results if r['ticker'] == ticker)
+                    console.print(f"  {i}. {ticker} (Score: {result.get('screening_score', 0)})")
+                
+                # Let user choose which ticker(s) to analyze
+                console.print(
+                    create_question_box(
+                        "Select Ticker(s)",
+                        f"Enter ticker(s) to analyze (comma-separated for multiple, or 'all' for all {len(top_tickers)} candidates)",
+                        top_tickers[0]
+                    )
+                )
+                ticker_input = typer.prompt("", default=top_tickers[0])
+                
+                if ticker_input.lower() == "all":
+                    discovery_tickers = top_tickers
+                else:
+                    discovery_tickers = [t.strip().upper() for t in ticker_input.split(",")]
+                
+                selected_ticker = discovery_tickers[0] if discovery_tickers else None
+            else:
+                console.print("[yellow]No high-scoring candidates found. Using discovered tickers...[/yellow]")
+                discovery_tickers = candidates[:3]
+                selected_ticker = discovery_tickers[0] if discovery_tickers else None
+                
+        except Exception as e:
+            console.print(f"[red]Discovery failed: {e}[/red]")
+            console.print("[yellow]Falling back to direct ticker input...[/yellow]")
+            mode_choice = "direct"
+    
+    if mode_choice != "discovery" or not selected_ticker:
+        # Step 1: Ticker symbol (direct mode)
+        console.print(
+            create_question_box(
+                "Step 1: Ticker Symbol", "Enter the ticker symbol to analyze", "SPY"
+            )
+        )
+        selected_ticker = get_ticker()
 
     # Step 2: Analysis date
     default_date = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -486,6 +615,7 @@ def get_user_selections():
 
     return {
         "ticker": selected_ticker,
+        "discovery_tickers": discovery_tickers if 'discovery_tickers' in locals() else [],
         "analysis_date": analysis_date,
         "analysts": selected_analysts,
         "research_depth": selected_research_depth,

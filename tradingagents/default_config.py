@@ -13,6 +13,11 @@ DEFAULT_CONFIG = {
     "deep_think_llm": "o4-mini",
     "quick_think_llm": "gpt-4o-mini",
     "backend_url": "https://api.openai.com/v1",
+    # llama.cpp specific settings
+    "llamacpp_server_url": "http://localhost:8000/v1",  # Server mode URL
+    "llamacpp_model_path": None,  # Path to GGUF for direct mode (None = use server)
+    "llamacpp_n_ctx": 4096,  # Context window
+    "llamacpp_n_gpu_layers": -1,  # -1 = all GPU layers
     # Debate and discussion settings
     "max_debate_rounds": 1,
     "max_risk_discuss_rounds": 1,

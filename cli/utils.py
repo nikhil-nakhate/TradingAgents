@@ -1,7 +1,10 @@
 import questionary
 from typing import List, Optional, Tuple, Dict
+from rich.console import Console
 
 from cli.models import AnalystType
+
+console = Console()
 
 ANALYST_ORDER = [
     ("Market Analyst", AnalystType.MARKET),
@@ -152,6 +155,11 @@ def select_shallow_thinking_agent(provider) -> str:
         "ollama": [
             ("llama3.1 local", "llama3.1"),
             ("llama3.2 local", "llama3.2"),
+        ],
+        "llamacpp (local)": [
+            ("DeepSeek-R1-Distill-Llama-8B (Fast reasoning)", "deepseek-r1-distill-llama-8b"),
+            ("Qwen2.5-7B-Instruct (Balanced)", "qwen2.5-7b-instruct"),
+            ("Llama-3.3-70B-Instruct (High quality)", "llama-3.3-70b-instruct"),
         ]
     }
 
@@ -214,6 +222,11 @@ def select_deep_thinking_agent(provider) -> str:
         "ollama": [
             ("llama3.1 local", "llama3.1"),
             ("qwen3", "qwen3"),
+        ],
+        "llamacpp (local)": [
+            ("DeepSeek-R1-Distill-Llama-70B (Best reasoning)", "deepseek-r1-distill-llama-70b"),
+            ("DeepSeek-R1-Distill-Qwen-32B (Strong reasoning)", "deepseek-r1-distill-qwen-32b"),
+            ("Llama-3.3-70B-Instruct (Comprehensive)", "llama-3.3-70b-instruct"),
         ]
     }
     
@@ -247,7 +260,8 @@ def select_llm_provider() -> tuple[str, str]:
         ("Anthropic", "https://api.anthropic.com/"),
         ("Google", "https://generativelanguage.googleapis.com/v1"),
         ("Openrouter", "https://openrouter.ai/api/v1"),
-        ("Ollama", "http://localhost:11434/v1"),        
+        ("Ollama", "http://localhost:11434/v1"),
+        ("LlamaCpp (Local)", "http://localhost:8000/v1"),
     ]
     
     choice = questionary.select(

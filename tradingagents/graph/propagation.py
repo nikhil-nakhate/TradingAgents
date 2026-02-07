@@ -23,18 +23,30 @@ class Propagator:
             "messages": [("human", company_name)],
             "company_of_interest": company_name,
             "trade_date": str(trade_date),
-            "investment_debate_state": InvestDebateState(
-                {"history": "", "current_response": "", "count": 0}
-            ),
-            "risk_debate_state": RiskDebateState(
-                {
-                    "history": "",
-                    "current_risky_response": "",
-                    "current_safe_response": "",
-                    "current_neutral_response": "",
-                    "count": 0,
-                }
-            ),
+            "sender": "",
+            "investment_debate_state": {
+                "bull_history": "",
+                "bear_history": "",
+                "history": "",
+                "current_response": "",
+                "judge_decision": "",
+                "count": 0,
+            },
+            "investment_plan": "",
+            "trader_investment_plan": "",
+            "risk_debate_state": {
+                "risky_history": "",
+                "safe_history": "",
+                "neutral_history": "",
+                "history": "",
+                "latest_speaker": "",
+                "current_risky_response": "",
+                "current_safe_response": "",
+                "current_neutral_response": "",
+                "judge_decision": "",
+                "count": 0,
+            },
+            "final_trade_decision": "",
             "market_report": "",
             "fundamentals_report": "",
             "sentiment_report": "",

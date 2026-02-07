@@ -75,6 +75,32 @@ class TradingAgentsGraph:
         if self.config["llm_provider"].lower() == "openai" or self.config["llm_provider"] == "ollama" or self.config["llm_provider"] == "openrouter":
             self.deep_thinking_llm = ChatOpenAI(model=self.config["deep_think_llm"], base_url=self.config["backend_url"])
             self.quick_thinking_llm = ChatOpenAI(model=self.config["quick_think_llm"], base_url=self.config["backend_url"])
+        elif self.config["llm_provider"].lower() == "llamacpp":
+            # Server mode (recommended): Use OpenAI-compatible wrapper
+            if self.config.get("llamacpp_model_path") is None:
+                self.deep_thinking_llm = ChatOpenAI(
+                    model=self.config["deep_think_llm"],
+                    base_url=self.config.get("llamacpp_server_url", "http://localhost:8000/v1")
+                )
+                self.quick_thinking_llm = ChatOpenAI(
+                    model=self.config["quick_think_llm"],
+                    base_url=self.config.get("llamacpp_server_url", "http://localhost:8000/v1")
+                )
+            else:
+                # Direct mode - load model in-process
+                from langchain_community.chat_models import ChatLlamaCpp
+                import multiprocessing
+                self.deep_thinking_llm = ChatLlamaCpp(
+                    model_path=self.config["llamacpp_model_path"],
+                    temperature=0.7,
+                    n_ctx=self.config.get("llamacpp_n_ctx", 4096),
+                    n_gpu_layers=self.config.get("llamacpp_n_gpu_layers", -1),
+                    n_batch=512,
+                    n_threads=self.config.get("llamacpp_n_threads") or (multiprocessing.cpu_count() - 1),
+                    verbose=False,
+                )
+                # For quick thinking, use same model in direct mode
+                self.quick_thinking_llm = self.deep_thinking_llm
         elif self.config["llm_provider"].lower() == "anthropic":
             self.deep_thinking_llm = ChatAnthropic(model=self.config["deep_think_llm"], base_url=self.config["backend_url"])
             self.quick_thinking_llm = ChatAnthropic(model=self.config["quick_think_llm"], base_url=self.config["backend_url"])
